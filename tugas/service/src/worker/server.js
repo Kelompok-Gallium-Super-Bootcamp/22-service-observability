@@ -10,7 +10,6 @@ const {
 } = require('./worker.service');
 const { config } = require('../config');
 
-
 let server;
 
 function run(ctx, callback) {
@@ -83,7 +82,7 @@ function run(ctx, callback) {
   });
 }
 
-function cors(req, res, ctx) {
+function cors(req, res) {
   // handle preflight request
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Request-Method', '*');

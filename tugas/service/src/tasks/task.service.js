@@ -81,7 +81,7 @@ function addSvc(req, res, { logger, tracer }) {
             message: 'service stopped because of busboy error',
           });
           abort();
-          addFile.finish();          
+          addFile.finish();
         }
         addFile.finish();
         const addField = tracer.startSpan('add_field', {
@@ -102,7 +102,7 @@ function addSvc(req, res, { logger, tracer }) {
                 event: 'invalid input',
                 message: 'invalid input task data / data not complete',
               });
-              addField.finish();              
+              addField.finish();
             } else {
               logger.error('data can not processed');
               addField.setTag('error', true);
@@ -111,7 +111,7 @@ function addSvc(req, res, { logger, tracer }) {
                 message: 'data can not processed',
               });
               res.statusCode = 500;
-              addField.finish();              
+              addField.finish();
             }
             res.write(err);
           }
@@ -230,7 +230,7 @@ async function doneSvc(req, res, { logger, tracer }) {
     logger.info('done status has been changed succefully');
     res.write(JSON.stringify(task));
     res.end();
-    doneChild.finish();    
+    doneChild.finish();
   } catch (err) {
     const doneChildError = tracer.startSpan('done_error', {
       childOf: doneParrent,

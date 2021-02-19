@@ -36,7 +36,7 @@ function registerSvc(req, res, { logger, tracer }) {
   function abort() {
     const parentSpan1 = tracer.startSpan('add_service_abort');
     const span5 = tracer.startSpan1('menyimpan file', {
-      childOf: parentSpan,
+      childOf: parentSpan1,
     });
     req.unpipe(busboy);
     if (!req.aborted) {
@@ -54,67 +54,68 @@ function registerSvc(req, res, { logger, tracer }) {
   }
 
   busboy.on('file', async (fieldname, file, filename, encoding, mimetype) => {
-    const parentSpan = tracer.startSpan('add_service_file');
     switch (fieldname) {
       case 'photo':
-        const span = tracer.startSpan('menyimpan file', {
-          childOf: parentSpan,
-        });
-        try {
-          data.photo = await saveFile(file, mimetype);
-          logger.info('photo disimpan');
-        } catch (err) {
-          logger.error('photo is null');
-          span.setTag('error', true);
-          span.log({
-            event: 'service stopped',
-            message: 'service stopped because of busboy error',
+        {
+          const parentSpan = tracer.startSpan('add_service_file');
+          const span = tracer.startSpan('menyimpan file', {
+            childOf: parentSpan,
           });
-          abort();
-          span.finish();
-        }
-        const span1 = tracer.startSpan('write_worker_on_db', {
-          childOf: parentSpan,
-        });
-        if (!req.aborted && finished) {
           try {
-            const worker = await register(data);
-            logger.info('worker berhasil ditambahkan');
-            res.setHeader('content-type', 'application/json');
-            const span2 = tracer.startSpan('encode_result', {
-              childOf: parentSpan,
-            });
-            res.write(JSON.stringify(worker));
-            span2.finish();
+            data.photo = await saveFile(file, mimetype);
+            logger.info('photo disimpan');
           } catch (err) {
-            if (err === ERROR_REGISTER_DATA_INVALID) {
-              res.statusCode = 401;
-              logger.error('ERROR_REGISTER_DATA_INVALID');
-              span1.setTag('error', true);
-              span1.log({
-                event: 'error write to database',
-                message: err.message,
-              });
-            } else {
-              res.statusCode = 500;
-              logger.error('data worker tidak lengkap');
-              span1.setTag('error', true);
-              span1.log({
-                event: 'error parsing body',
-                message: 'parameter worker tidak valid',
-              });
-            }
-            const span2 = tracer.startSpan('encode_result', {
-              childOf: parentSpan,
+            logger.error('photo is null');
+            span.setTag('error', true);
+            span.log({
+              event: 'service stopped',
+              message: 'service stopped because of busboy error',
             });
-            res.write(err);
-            span2.finish();
+            abort();
+            span.finish();
           }
-          res.end();
-          
+          const span1 = tracer.startSpan('write_worker_on_db', {
+            childOf: parentSpan,
+          });
+          if (!req.aborted && finished) {
+            try {
+              const worker = await register(data);
+              logger.info('worker berhasil ditambahkan');
+              res.setHeader('content-type', 'application/json');
+              const span2 = tracer.startSpan('encode_result', {
+                childOf: parentSpan,
+              });
+              res.write(JSON.stringify(worker));
+              span2.finish();
+            } catch (err) {
+              if (err === ERROR_REGISTER_DATA_INVALID) {
+                res.statusCode = 401;
+                logger.error('ERROR_REGISTER_DATA_INVALID');
+                span1.setTag('error', true);
+                span1.log({
+                  event: 'error write to database',
+                  message: err.message,
+                });
+              } else {
+                res.statusCode = 500;
+                logger.error('data worker tidak lengkap');
+                span1.setTag('error', true);
+                span1.log({
+                  event: 'error parsing body',
+                  message: 'parameter worker tidak valid',
+                });
+              }
+              const span2 = tracer.startSpan('encode_result', {
+                childOf: parentSpan,
+              });
+              res.write(err);
+              span2.finish();
+            }
+            res.end();
+          }
+          span.finish();
+          parentSpan.finish();
         }
-        span.finish();
-        parentSpan.finish();
         break;
       default: {
         const noop = new Writable({
@@ -124,9 +125,7 @@ function registerSvc(req, res, { logger, tracer }) {
         });
         file.pipe(noop);
       }
-
     }
-    
   });
 
   busboy.on('field', (fieldname, val) => {
@@ -196,11 +195,11 @@ async function infoSvc(req, res, { logger, tracer }) {
     });
     res.statusCode = 401;
     logger.error('id is null');
-      span.setTag('error', true);
-      span.log({
-        event: 'error parsing body',
-        message: 'parameter id tidak ada',
-      });
+    span.setTag('error', true);
+    span.log({
+      event: 'error parsing body',
+      message: 'parameter id tidak ada',
+    });
     res.write('parameter id tidak ditemukan');
     res.end();
     span.finish();
@@ -229,26 +228,26 @@ async function infoSvc(req, res, { logger, tracer }) {
       logger.error('worker tidak ditemukan ');
       span3.setTag('error', true);
       span3.log({
-          event: 'error read to database',
+        event: 'error read to database',
         message: 'worker tidak ditemukan',
       });
       res.statusCode = 404;
       res.write(err);
       res.end();
       span3.finish();
-      parentSpan.finish()
+      parentSpan.finish();
       return;
     }
     logger.error('error ketika akan menghapus worker');
-      span3.setTag('error', true);
-      span3.log({
-        event: 'error read to database',
-        message: 'error ketika akan menghapus worker',
+    span3.setTag('error', true);
+    span3.log({
+      event: 'error read to database',
+      message: 'error ketika akan menghapus worker',
     });
     res.statusCode = 500;
     res.end();
     span3.finish();
-    parentSpan.finish()
+    parentSpan.finish();
     return;
   }
   parentSpan.finish();
@@ -314,10 +313,10 @@ async function removeSvc(req, res, { logger, tracer }) {
       return;
     }
     logger.error('error ketika akan menghapus worker');
-      span3.setTag('error', true);
-      span3.log({
-        event: 'error read to database',
-        message: 'error ketika akan menghapus worker',
+    span3.setTag('error', true);
+    span3.log({
+      event: 'error read to database',
+      message: 'error ketika akan menghapus worker',
     });
     res.statusCode = 500;
     res.end();
@@ -333,7 +332,7 @@ async function removeSvc(req, res, { logger, tracer }) {
  * @param {ClientRequest} req
  * @param {ServerResponse} res
  */
-async function getPhotoSvc(req, res) {
+async function getPhotoSvc(req, res, { logger, tracer }) {
   const uri = url.parse(req.url, true);
   const objectName = uri.pathname.replace('/photo/', '');
   const parentSpan = tracer.startSpan('get photo');
@@ -369,8 +368,8 @@ async function getPhotoSvc(req, res) {
     });
     if (err === ERROR_FILE_NOT_FOUND) {
       logger.error('photo tidak ditemukan');
-      span3.setTag('error', true);
-      span3.log({
+      span2.setTag('error', true);
+      span2.log({
         event: 'data not found',
         message: 'photo tidak ditemukan',
       });
@@ -382,11 +381,11 @@ async function getPhotoSvc(req, res) {
       return;
     }
     logger.error('gagal membaca file photo');
-      span3.setTag('error', true);
-      span3.log({
-        event: 'failed to load',
-        message: 'gagal membaca file photo',
-      });
+    span2.setTag('error', true);
+    span2.log({
+      event: 'failed to load',
+      message: 'gagal membaca file photo',
+    });
     res.statusCode = 500;
     res.write('gagal membaca file');
     res.end();
